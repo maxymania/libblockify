@@ -13,7 +13,7 @@ Status
 
 There is not a working program, just a library.
 Insertion and extraction already works.
-Now it got a Network protocol to Transfer the Blocks from computer to computer.
+The Network Component is under heavy developement and not stable.
 
 here is that code i used t "test" the functionality(file pathes changed)
 
