@@ -104,7 +104,8 @@ func DownloadStream(block1, block2 []byte, dest io.Writer, bck bucket.Bucket, tu
 		}
 	} else {
 		for i,tuple2 := range descr.Tuples {
-			DecodeTuple(block1,block2,bck,tuple2)
+			e = DecodeTuple(block1,block2,bck,tuple2)
+			if e!=nil { return }
 			if i==last {
 				_,e = dest.Write(block1[:rest])
 			} else {
@@ -115,3 +116,21 @@ func DownloadStream(block1, block2 []byte, dest io.Writer, bck bucket.Bucket, tu
 	}
 	return
 }
+
+func TestDownloadStream(block1, block2 []byte, bck bucket.Bucket, tuple [][]byte, hashes chan []byte) (ok bool){
+	ok = TestDecodeTuple(block1,block2,bck,tuple,hashes)
+	if !ok { return }
+	descr := &descriptor.DescriptorBlock{Header:new(blockheader.Header)}
+	descr.Parse(block1)
+	if descr.Header.DDBlock {
+		for _,tuple2 := range descr.Tuples {
+			if !TestDownloadStream(block1,block2,bck,tuple2,hashes) { ok = false }
+		}
+	} else {
+		for _,tuple2 := range descr.Tuples {
+			if !TestDecodeTuple(block1,block2,bck,tuple2,hashes) { ok = false }
+		}
+	}
+	return
+}
+

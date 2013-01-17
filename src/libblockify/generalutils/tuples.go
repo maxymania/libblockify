@@ -49,3 +49,15 @@ func DecodeTuple(block1, block2 []byte, bck bucket.Bucket, tuple [][]byte) (e er
 	return
 }
 
+func TestDecodeTuple(block1, block2 []byte, bck bucket.Bucket, tuple [][]byte, hashes chan []byte) (ok bool) {
+	ts := len(tuple)
+	ok = true
+	e := bck.ELoad(tuple[0],block1)
+	if e!=nil { hashes <- tuple[0] ; ok = false }
+	for i:=1 ; i<ts ; i++ {
+		e2 := bck.ELoad(tuple[i],block2)
+		if e2!=nil { hashes <- tuple[i] ; ok = false }
+		blockutil.XorBlock(block1,block2)
+	}
+	return
+}
