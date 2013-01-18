@@ -82,6 +82,7 @@ func (at *AgentThread) requestDisp2() {
 	for cmd := range at.requestCh2 {
 		ttl,e := strconv.ParseInt(cmd.Cmd.CmdPar[1],10,64)
 		if e!=nil { continue }
+		if ttl<2 { continue } // ttl=1 or less => expired
 		if ttl>at.MaxTTL { ttl = at.MaxTTL }
 		ttl-=1
 		dist := HammingDistance(at.OwnNodeID,cmd.Id)
