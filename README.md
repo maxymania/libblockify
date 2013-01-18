@@ -3,6 +3,8 @@ Blockify
 
 A Filesharing System similar to OFF (Owner Free Filesystem)
 
+(or at least, it aims to be something like that)
+
 libblockify
 -----------
 
