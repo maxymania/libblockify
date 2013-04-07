@@ -5,7 +5,7 @@ A Filesharing System similar to OFF (Owner Free Filesystem)
 
 (or at least, it aims to be something like that)
 
-see [blockify-docs-and-nodejs](https://github.com/maxymania/blockify-docs-and-nodejs)
+see also [blockify-docs-and-nodejs](https://github.com/maxymania/blockify-docs-and-nodejs)
 
 libblockify
 -----------
@@ -18,6 +18,7 @@ Status
 There is not a working program, just a library.
 Insertion and extraction already works.
 The Network Component is under heavy developement and not stable.
+Its likely to get it stable soon.
 
 here is that code i used t "test" the functionality(file pathes changed)
 
