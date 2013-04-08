@@ -81,6 +81,7 @@ func (n *Node) Recommend(addr, other net.Addr){
 	var pck Packet
 	pck.Id=n.IdEnc
 	pck.Q="recommend"
+	pck.Appendix = other.String()
 	bytes,e := json.Marshal(pck)
 	if e!=nil { return }
 	if n.Debug { fmt.Println("recommend",addr,"->",other) }
@@ -101,6 +102,12 @@ func (n *Node) ihave(id string, addr net.Addr) {
 	if n.Debug { fmt.Println("ihave",id) }
 	n.Conn.WriteTo(bytes,addr)
 }
+func (n *Node) Push(hash []byte) {
+	id := hex.EncodeToString(hash)
+	d := HammingDistance(n.Id,hash)
+	for a2 := range n.Table.GetCloser(id,d) { n.ihave(id,a2) }
+}
+
 func (n *Node) Run(){
 	var pck Packet
 	buf := make([]byte,1024)
