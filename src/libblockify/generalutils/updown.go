@@ -16,7 +16,7 @@ func UploadStreamSimple(block1, block2 []byte, rand, src io.Reader, bck bucket.B
 	descr := &descriptor.DescriptorBlock{Header:hdr}
 	hdr.TupleSize = tupleSize
 	i := 0
-	for i<MaxHashes {
+	for (i+tupleSize)<=MaxHashes {
 		readed,tuple,e := GenerateTuple(block1, block2, rand, src, bck, tupleSize)
 		if e!=nil { return 0,nil,e }
 		descr.AddBlock(tuple)
@@ -58,7 +58,7 @@ func UploadStream(block1, block2 []byte, rand, src io.Reader, bck bucket.Bucket,
 	hdr.TupleSize = tupleSize
 	i := 0
 	if depth<=1 {
-		for i<MaxHashes {
+		for (i+tupleSize)<=MaxHashes {
 			readed,tuple,e := GenerateTuple(block1, block2, rand, src, bck, tupleSize)
 			if e!=nil { return false,0,nil,e }
 			descr.AddBlock(tuple)
@@ -67,7 +67,7 @@ func UploadStream(block1, block2 []byte, rand, src io.Reader, bck bucket.Bucket,
 			if readed<BlockSize { broken = true ; break }
 		}
 	} else {
-		for i<MaxHashes {
+		for (i+tupleSize)<=MaxHashes {
 			broken2,rest2,tuple2,e2 := UploadStream(block1,block2,rand,src,bck,tupleSize,depth-1)
 			if e2!=nil { return false,0,nil,e2 }
 			descr.AddBlock(tuple2)
