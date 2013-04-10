@@ -1,6 +1,7 @@
 package f2ftp
 
 import (
+	"fmt"
 	"net"
 	"net/textproto"
 	"io"
@@ -40,6 +41,7 @@ type Service struct{
 	ChQuit chan int
 	// Pull Requests made by the user
 	ChPull chan []byte
+	Debug bool
 }
 
 func NewService(acc BlockAcceptor, bck bucket.Bucket) *Service {
@@ -66,7 +68,8 @@ func (s *Service) reader(r *textproto.Reader) {
 		if req[1]=="QUIT" { break }
 		switch req[1] {
 			case "PULL":
-				k,e := base64.URLEncoding.DecodeString(req[2])
+				if s.Debug { fmt.Println("got pull",req[2]) }
+				k,e := base64.StdEncoding.DecodeString(req[2])
 				if e==nil { s.rpull <- k }
 			case "PUSH":
 				_,e = io.ReadFull(r.R,s.rblock)
@@ -75,7 +78,10 @@ func (s *Service) reader(r *textproto.Reader) {
 					h.Write(s.rblock)
 					hash := h.Sum([]byte{})
 					if s.acc.Accept(hash) {
+						if s.Debug { fmt.Println("got push",base64.StdEncoding.EncodeToString(hash),"accept") }
 						s.bck.Store(hash,s.rblock)
+					}else{
+						if s.Debug { fmt.Println("got push",base64.StdEncoding.EncodeToString(hash),"refuse") }
 					}
 				}
 		}
@@ -94,7 +100,7 @@ func (s *Service) writer(w io.Writer){
 				}
 			case <- s.writerInterrupt: goto exitfunc
 			case k := <- s.ChPull:
-				str := base64.URLEncoding.EncodeToString(k)
+				str := base64.StdEncoding.EncodeToString(k)
 				buf.WriteString("PULL "+str+"\r\n")
 			case <- s.ChQuit:
 				w.Write([]byte("QUIT x\r\n"))

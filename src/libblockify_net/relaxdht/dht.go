@@ -16,6 +16,7 @@ type Packet struct{
 	Q string `json:"q"`
 	OtherId string `json:"other-id,omitempty"`
 	Appendix interface{} `json:"appendix,omitempty"`
+	TTL string `json"ttl,omitempty"`
 }
 
 type IHaveMsg struct{
@@ -74,8 +75,23 @@ func (n *Node) Search(id []byte){
 	bytes,e := json.Marshal(pck)
 	if e!=nil { return }
 	if n.Debug { fmt.Println("search",hex.EncodeToString(id)) }
-	closest,_,ok := n.Table.GetClosest(id)
-	if ok { n.Conn.WriteTo(bytes,closest.Addr) }
+	// closest,_,ok := n.Table.GetClosest(id)
+	// if ok { n.Conn.WriteTo(bytes,closest.Addr) }
+	d := HammingDistance(n.Id,id)
+	for a2 := range n.Table.GetCloser(pck.OtherId,d) { n.Conn.WriteTo(bytes,a2) } // never send up!
+}
+func (n *Node) BroadSearch(id []byte){
+	var pck Packet
+	pck.Id=n.IdEnc
+	pck.Q="broadsearch"
+	pck.OtherId = hex.EncodeToString(id)
+	pck.TTL="7"
+	bytes,e := json.Marshal(pck)
+	if e!=nil { return }
+	if n.Debug { fmt.Println("broadsearch",hex.EncodeToString(id)) }
+	for _,conn := range n.Table.Data {
+		n.Conn.WriteTo(bytes,conn.Addr)
+	}
 }
 func (n *Node) Recommend(addr, other net.Addr){
 	var pck Packet
@@ -160,6 +176,7 @@ func (n *Node) Run(){
 				continue
 			}
 			if n.Exists(bid) {
+				if n.Debug { fmt.Println("search got",pck.OtherId) }
 				a2,e := appendixToUdpAddress(pck.Appendix)
 				if e!=nil { continue }
 				if a2!=nil {
@@ -168,11 +185,41 @@ func (n *Node) Run(){
 					n.ihave(pck.OtherId,a)
 				}
 			}else{
+				if n.Debug { fmt.Println("search missed",pck.OtherId) }
 				if pck.Appendix==nil { pck.Appendix=a.String() }
 				bytes,e := json.Marshal(pck)
 				if e!=nil { continue }
-				closest,dist,ok := n.Table.GetClosest(bid)
-				if ok && dist<=mydist { n.Conn.WriteTo(bytes,closest.Addr) } // never send up!
+				for a2 := range n.Table.GetCloser(pck.OtherId,mydist) { n.Conn.WriteTo(bytes,a2) } // never send up!
+			}
+		case "broadsearch":
+			ttl,e := strconv.Atoi(pck.TTL)
+			if e!=nil { continue }
+			if ttl<1 { continue }
+			if ttl>10 { continue } // too high ttl will be deleted
+			ttl--
+			bid,e := hex.DecodeString(pck.OtherId)
+			if e!=nil || len(bid)!=64 {
+				if n.Debug { fmt.Println("broadsearch error:",e,"||",len(bid),"!=",64) }
+				continue
+			}
+			if n.Exists(bid) {
+				if n.Debug { fmt.Println("broadsearch got",pck.OtherId) }
+				a2,e := appendixToUdpAddress(pck.Appendix)
+				if e!=nil { continue }
+				if a2!=nil {
+					n.ihave(pck.OtherId,a2)
+				}else{
+					n.ihave(pck.OtherId,a)
+				}
+			}else{
+				if n.Debug { fmt.Println("broadsearch missed",pck.OtherId) }
+				if pck.Appendix==nil { pck.Appendix=a.String() }
+				pck.TTL = strconv.Itoa(ttl)
+				bytes,e := json.Marshal(pck)
+				if e!=nil { continue }
+				for _,conn := range n.Table.Data {
+					n.Conn.WriteTo(bytes,conn.Addr)
+				}
 			}
 		case "ihave":
 			bid,e := hex.DecodeString(pck.OtherId)

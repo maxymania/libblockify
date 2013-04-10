@@ -8,6 +8,7 @@ import (
 	"crypto/sha512"
 	"net"
 	"net/http"
+	"time"
 )
 
 import "libblockify/bucket"
@@ -66,6 +67,7 @@ func main(){
 	if e!=nil { fmt.Println(e) ; return }
 	
 	g := new(glue.Glue).Init(id,mybucket,config.Ip,config.DhtPort,config.BucketPort)
+	g.DebugOn()
 	go g.ServeBucket()
 	go g.ServeDht()
 	go g.RunPull()
@@ -77,8 +79,12 @@ func main(){
 		}
 	}()
 	h := webgui.NewHandler(g.GetBucket(),hashes)
-	for _,a := range addrs {
-		g.PingUdp(a)
-	}
+	go func(){
+		time.Sleep(time.Second)
+		for _,a := range addrs {
+			time.Sleep(time.Millisecond*100)
+			g.PingUdp(a)
+		}
+	}()
 	http.Serve(ht,h)
 }

@@ -1,0 +1,8 @@
+{
+	"bucket": "K:\\developement\\golang\\blockify_tools\\help\\_bucket0\\",
+	"ip": "127.0.0.1",
+    "dht-port": "44901",
+    "bucket-port": "44908",
+	"http": ["tcp",":8080"],
+    "gen": "ac3bfd5365fd97f5aed6e049a7b6cab8c39a035cf18977a324a5d0cfbd7583fdc46d8b6e0fdac8269dda20bbd2f63dbb7a5f6f358dbd54def6061a9f3b48355f"
+}

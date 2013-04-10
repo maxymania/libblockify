@@ -1,5 +1,6 @@
 package glue
 
+// import "fmt"
 import "net"
 import "sync"
 import "time"
@@ -53,6 +54,7 @@ type Glue struct {
 	// serv f2ftp.Service
 	acc   *acceptor
 	bck   *hBucket
+	debug bool
 }
 func (g *Glue) Init(id []byte, mybuck bucket.Bucket,ip,dht,bck string) *Glue{
 	dhtc,e := net.ListenPacket("udp",ip+":"+dht)
@@ -61,6 +63,8 @@ func (g *Glue) Init(id []byte, mybuck bucket.Bucket,ip,dht,bck string) *Glue{
 	if e!=nil { panic(e) }
 	g.acc = &acceptor{wantMap:make(map[string]bool)}
 	g.dht = relaxdht.CreateNode(dhtc,id)
+	g.dht.BucketServicePort = bck
+	g.dht.Bucket = mybuck
 	g.bck = &hBucket{g.acc,mybuck,g.dht}
 	return g
 }
@@ -70,29 +74,47 @@ func (g *Glue) ServeBucket() {
 		conn, err := g.bcks.Accept()
 		if err != nil { continue }
 		bs := f2ftp.NewService(g.acc,g.bck)
+		bs.Debug = g.debug
 		go bs.Serve(conn)
 	}
 }
 func (g *Glue) ServeDht() {
 	g.dht.Run()
 }
+func (g *Glue) DebugOn() {
+	g.dht.Debug=true
+	g.debug=true
+}
 func (g *Glue) pull(ih *relaxdht.IHaveMsg){
+	// if g.debug { fmt.Println("pull request:",ih) }
 	conn, err := net.DialTCP("tcp",nil,ih.Addr)
-	if err != nil { return }
+	if err != nil {
+		// if g.debug { fmt.Println("pull error:",err) }
+		return
+	}
+	if !g.bck.Exists(ih.Id) {
+		g.acc.want(ih.Id)
+	}
 	bs := f2ftp.NewService(g.acc,g.bck)
+	bs.Debug = g.debug
 	go bs.Serve(conn)
 	bs.ChPull <- ih.Id
 	time.Sleep(time.Second*2)
 	bs.ChQuit <- 1
+	// if g.debug { fmt.Println("pull quit",ih) }
 }
 func (g *Glue) RunPull(){
 	for ih := range g.dht.IHCh{
-		go g.pull(ih)
+		if !g.bck.Exists(ih.Id) {
+			go g.pull(ih)
+		}
 	}
 }
 
 func (g *Glue) Want(hash []byte) {
-	g.acc.want(hash)
+	// if !g.bck.Exists(hash) {
+	g.dht.BroadSearch(hash)
+	// }
 }
 func (g *Glue) Ping(addr net.Addr) { g.dht.Ping(addr) }
 func (g *Glue) PingUdp(adrs string) {
