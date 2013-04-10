@@ -78,14 +78,15 @@ type decodedUrl struct{
 type downloadStatus struct{
 	decodedUrl
 	status int
+	curstat string
 }
 func (ds *downloadStatus) Short() string{ return ds.name }
 func (ds *downloadStatus) Status() string{
 	switch ds.status{
 	case Uncomplete:
-		return "uncomplete"
+		return "uncomplete: "+ds.curstat
 	case Complete:
-		return "complete"
+		return "complete: "+ds.curstat
 	case Testing:
 		return "testing"
 	}
@@ -108,9 +109,12 @@ func NewHandler(b bucket.Bucket, hashes chan []byte) http.Handler{
 func (h *handler) testUrl(dls *downloadStatus) {
 	block1 := blockutil.AllocateBlock()
     block2 := blockutil.AllocateBlock()
-	if generalutils.TestDownloadStream(block1,block2,h.B,dls.tuple,h.Wants) {
+	m := new(generalutils.Metrik)
+	if generalutils.MeterDownloadStream(block1,block2,h.B,dls.tuple,h.Wants,m) {
+		dls.curstat=m.String()
 		dls.status=Complete
 	}else{
+		dls.curstat=m.String()
 		dls.status=Uncomplete
 	}
 }
@@ -130,7 +134,7 @@ func (h *handler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		h.m.Lock(); defer h.m.Unlock()
 		_,ok := h.InUse[u] // do not overwrite anything!
 		if !ok {
-			h.InUse[u]=&downloadStatus{decodedUrl{tuple,rest,name},None}
+			h.InUse[u]=&downloadStatus{decodedUrl{tuple,rest,name},None,""}
 		}
 		goto redirect 
 	case path=="/test":

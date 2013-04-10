@@ -61,3 +61,18 @@ func TestDecodeTuple(block1, block2 []byte, bck bucket.Bucket, tuple [][]byte, h
 	}
 	return
 }
+
+func MeterDecodeTuple(block1, block2 []byte, bck bucket.Bucket, tuple [][]byte, hashes chan []byte, metrik *Metrik) (ok bool) {
+	ts := len(tuple)
+	ok = true
+	e := bck.ELoad(tuple[0],block1)
+	metrik.Max++
+	if e!=nil { hashes <- tuple[0] ; ok = false } else { metrik.Count++ }
+	for i:=1 ; i<ts ; i++ {
+		e2 := bck.ELoad(tuple[i],block2)
+		metrik.Max++
+		if e2!=nil { hashes <- tuple[i] ; ok = false } else { metrik.Count++ }
+		blockutil.XorBlock(block1,block2)
+	}
+	return
+}

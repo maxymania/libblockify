@@ -8,7 +8,17 @@ import (
 	"libblockify/bucket"
 	"io"
 	"errors"
+	"fmt"
 )
+
+type Metrik struct{
+	Max uint64
+	Count uint64
+}
+func (m *Metrik) String() string{
+	if m.Max<1 { return "0%" }
+	return fmt.Sprint((m.Count*100)/m.Max)+"%"
+}
 
 // This is a simple update function. It doesnt create ddblocks (Descriptors of Descriptors).
 func UploadStreamSimple(block1, block2 []byte, rand, src io.Reader, bck bucket.Bucket, tupleSize int) (rest int, tuple [][]byte,e error) {
@@ -133,4 +143,19 @@ func TestDownloadStream(block1, block2 []byte, bck bucket.Bucket, tuple [][]byte
 	}
 	return
 }
-
+func MeterDownloadStream(block1, block2 []byte, bck bucket.Bucket, tuple [][]byte, hashes chan []byte, metrik *Metrik) (ok bool){
+	ok = MeterDecodeTuple(block1,block2,bck,tuple,hashes, metrik)
+	if !ok { return }
+	descr := &descriptor.DescriptorBlock{Header:new(blockheader.Header)}
+	descr.Parse(block1)
+	if descr.Header.DDBlock {
+		for _,tuple2 := range descr.Tuples {
+			if !MeterDownloadStream(block1,block2,bck,tuple2,hashes, metrik) { ok = false }
+		}
+	} else {
+		for _,tuple2 := range descr.Tuples {
+			if !MeterDecodeTuple(block1,block2,bck,tuple2,hashes, metrik) { ok = false }
+		}
+	}
+	return
+}
