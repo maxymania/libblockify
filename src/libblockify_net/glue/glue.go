@@ -36,10 +36,12 @@ type hBucket struct{
 	Acc *acceptor
 	Bck bucket.Bucket
 	Dht *relaxdht.Node
+	chPush chan []byte
 }
 func (hb *hBucket) Store(hash, block []byte) (e error){
 	e = hb.Bck.Store(hash,block)
-	hb.Dht.Push(hash)
+	// hb.Dht.Push(hash)
+	hb.chPush <- hash
 	if e==nil { hb.Acc.unwant(hash) }
 	return
 }
@@ -47,6 +49,12 @@ func (hb *hBucket) Load(hash []byte) ([]byte,error) { return hb.Bck.Load(hash) }
 func (hb *hBucket) ELoad(hash, block []byte) error { return hb.Bck.ELoad(hash, block) }
 func (hb *hBucket) Exists(hash []byte) bool { return hb.Bck.Exists(hash) }
 func (hb *hBucket) ListUp(hashes chan <- []byte) { hb.Bck.ListUp(hashes) }
+func (hb *hBucket) pushService(){
+	for hash := range hb.chPush {
+		hb.Dht.Push(hash)
+		time.Sleep(50) // 2.5 MB per second
+	}
+}
 
 type Glue struct {
 	dht   *relaxdht.Node
@@ -65,7 +73,8 @@ func (g *Glue) Init(id []byte, mybuck bucket.Bucket,ip,dht,bck string) *Glue{
 	g.dht = relaxdht.CreateNode(dhtc,id)
 	g.dht.BucketServicePort = bck
 	g.dht.Bucket = mybuck
-	g.bck = &hBucket{g.acc,mybuck,g.dht}
+	g.bck = &hBucket{g.acc,mybuck,g.dht,make(chan []byte,)}
+	go g.bck.pushService()
 	return g
 }
 func (g *Glue) GetBucket() bucket.Bucket{ return g.bck }
@@ -113,7 +122,8 @@ func (g *Glue) RunPull(){
 
 func (g *Glue) Want(hash []byte) {
 	// if !g.bck.Exists(hash) {
-	g.dht.BroadSearch(hash)
+	// g.dht.BroadSearch(hash)
+	g.dht.Search(hash)
 	// }
 }
 func (g *Glue) Ping(addr net.Addr) { g.dht.Ping(addr) }
