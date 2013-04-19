@@ -119,12 +119,11 @@ func (g *Glue) RunPull(){
 		}
 	}
 }
-
+func (g *Glue) BfWant(hash []byte) {
+	g.dht.BroadSearch(hash)
+}
 func (g *Glue) Want(hash []byte) {
-	// if !g.bck.Exists(hash) {
-	// g.dht.BroadSearch(hash)
 	g.dht.Search(hash)
-	// }
 }
 func (g *Glue) Ping(addr net.Addr) { g.dht.Ping(addr) }
 func (g *Glue) PingUdp(adrs string) {
